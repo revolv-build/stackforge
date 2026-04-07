@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">&#9672; {{ app_name }}</a>
+  <div class="nav-links">
+    <a href="/login">Sign in</a>
+  </div>
+</nav>
+
+<div class="landing-hero">
+  <h1 class="landing-title">Server Command Centre</h1>
+  <p class="landing-sub">Monitor your apps, view logs, check server health — all from one dashboard.</p>
+  <div class="landing-actions">
+    <a href="/login" class="btn btn-primary" style="padding:12px 32px;font-size:15px;">Sign In</a>
+  </div>
+</div>
+
+<div class="page" style="max-width:800px;">
+  <div class="landing-features">
+    <div class="feature-card">
+      <div class="feature-icon">&#9889;</div>
+      <h3>Live Status</h3>
+      <p>Health checks for every app. Green when running, red when down.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128196;</div>
+      <h3>Log Viewer</h3>
+      <p>Tail and filter access logs for any registered app from the browser.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9881;</div>
+      <h3>Server Stats</h3>
+      <p>CPU, memory, disk, uptime — everything at a glance.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

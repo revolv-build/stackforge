@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Logs: {{ app.name }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:1200px;">
+
+  <div class="hub-header">
+    <div>
+      <h1>Logs: {{ app.name }}</h1>
+      <div class="sub">{{ app.log_path or 'No log file configured' }} &middot; {{ log_stats.size_bytes | format_bytes }}</div>
+    </div>
+    <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}" class="btn btn-secondary">&larr; Back to App</a>
+  </div>
+
+  <!-- Log Controls -->
+  <div class="card mb-16">
+    <form method="GET" class="log-controls">
+      <div class="field-row" style="margin-bottom:0;">
+        <div class="field" style="flex:2;">
+          <div class="label">Filter</div>
+          <input name="filter" value="{{ filter_text }}" placeholder="Filter log lines..." />
+        </div>
+        <div class="field" style="flex:1;">
+          <div class="label">Lines</div>
+          <select name="lines">
+            <option value="50" {% if num_lines == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if num_lines == 100 %}selected{% endif %}>100</option>
+            <option value="200" {% if num_lines == 200 %}selected{% endif %}>200</option>
+            <option value="500" {% if num_lines == 500 %}selected{% endif %}>500</option>
+            <option value="1000" {% if num_lines == 1000 %}selected{% endif %}>1000</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0;align-self:flex-end;">
+          <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="log-stats-bar mb-16">
+    <span>Total: <strong>{{ log_stats.total_requests }}</strong></span>
+    <span>Today: <strong>{{ log_stats.today_requests }}</strong></span>
+    <span>Errors: <strong class="{% if log_stats.error_requests > 0 %}text-warn{% endif %}">{{ log_stats.error_requests }}</strong></span>
+    <span>Showing: <strong>{{ logs|length }}</strong> lines</span>
+  </div>
+
+  <!-- Log Output -->
+  {% if logs %}
+  <div class="log-viewer log-viewer-full">
+    {% for line in logs %}
+    <div class="log-line {% if '" 5' in line %}log-error{% elif '" 4' in line %}log-warn{% elif '" 3' in line %}log-redirect{% endif %}">{{ line }}</div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#128196;</div>
+    <h3>No log entries</h3>
+    <p>{% if filter_text %}No lines match your filter.{% else %}The log file is empty or not accessible.{% endif %}</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

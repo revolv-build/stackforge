@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Workspaces - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:1200px;">
+
+  <div class="hub-header">
+    <div>
+      <h1>Workspaces</h1>
+      <div class="sub">Select a workspace or create a new one.</div>
+    </div>
+    <a href="/workspaces/new" class="btn btn-primary">+ Create Workspace</a>
+  </div>
+
+  {% if workspaces %}
+  <div class="app-grid">
+    {% for item in workspaces %}
+    <a href="/workspaces/{{ item.workspace.slug }}/dashboard" class="app-card">
+      <div class="app-card-header">
+        <div class="app-card-name">{{ item.workspace.name }}</div>
+      </div>
+      {% if item.workspace.server_ip %}
+      <div class="app-card-meta">
+        <span>{{ item.workspace.server_ip }}</span>
+      </div>
+      {% endif %}
+      <div class="app-card-stats">
+        <span>{{ item.app_count }} app{{ 's' if item.app_count != 1 else '' }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#9881;</div>
+    <h3>No workspaces yet</h3>
+    <p>Create your first workspace to get started.</p>
+    <a href="/workspaces/new" class="btn btn-primary" style="margin-top:16px;">Create Workspace</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}{{ app.name }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:1000px;">
+
+  <div class="hub-header">
+    <div>
+      <div class="flex gap-12" style="align-items:center;">
+        <div class="app-card-status status-{{ status }}" style="width:14px;height:14px;"></div>
+        <h1 style="margin:0;">{{ app.name }}</h1>
+        <div class="app-card-badge badge-{{ status }}">{{ status }}</div>
+      </div>
+      {% if app.description %}
+      <div class="sub" style="margin-left:26px;">{{ app.description }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="app-actions-grid mt-12">
+    {% if app.server_path %}
+    <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/terminal" class="claude-connect-btn {% if claude_active %}active{% endif %}">
+      <img src="{{ url_for('static', filename='claudecode-color.svg') }}" width="16" height="16" alt="">
+      <span>Claude Code</span>
+    </a>
+    {% endif %}
+    <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/logs" class="btn btn-secondary">View Logs</a>
+    <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/edit" class="btn btn-secondary">Edit</a>
+    {% if app.url %}
+    <a href="{{ app.url }}" target="_blank" class="btn btn-primary">Open App &#8599;</a>
+    {% endif %}
+  </div>
+
+  <!-- Quick Info -->
+  <div class="stat-grid mt-16">
+    <div class="stat-card">
+      <div class="stat-label">Port</div>
+      <div class="stat-value">{{ app.port or 'Not set' }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Requests Today</div>
+      <div class="stat-value">{{ log_stats.today_requests }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Requests</div>
+      <div class="stat-value">{{ log_stats.total_requests }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Errors</div>
+      <div class="stat-value {% if log_stats.error_requests > 0 %}text-warn{% endif %}">{{ log_stats.error_requests }}</div>
+    </div>
+  </div>
+
+  <!-- Links & Config -->
+  <div class="detail-grid mt-24">
+    <div class="card">
+      <h3 class="card-title">Configuration</h3>
+      <div class="detail-row">
+        <span class="detail-label">Server Path</span>
+        <span class="detail-value"><code>{{ app.server_path or 'Not set' }}</code></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Service</span>
+        <span class="detail-value"><code>{{ app.service_name or 'Not set' }}</code></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Log File</span>
+        <span class="detail-value"><code>{{ app.log_path or 'Not set' }}</code></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Log Size</span>
+        <span class="detail-value">{{ log_stats.size_bytes | format_bytes }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Registered</span>
+        <span class="detail-value">{{ app.created | timeago }}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">Quick Links</h3>
+      {% if app.url %}
+      <a href="{{ app.url }}" target="_blank" class="quick-link">
+        <span>&#127760;</span> {{ app.url | replace('https://', '') | replace('http://', '') }}
+      </a>
+      {% endif %}
+      {% if app.github_url %}
+      <a href="{{ app.github_url }}" target="_blank" class="quick-link">
+        <span>&#128187;</span> {{ app.github_url | replace('https://github.com/', '') }}
+      </a>
+      {% endif %}
+      {% if app.server_path %}
+      <div class="quick-link">
+        <span>&#128193;</span> <code>cd {{ app.server_path }}</code>
+      </div>
+      {% endif %}
+      {% if app.service_name %}
+      <div class="quick-link">
+        <span>&#9881;</span> <code>systemctl status {{ app.service_name }}</code>
+      </div>
+      {% endif %}
+
+      {% if service_info %}
+      <div class="mt-16">
+        <h4 style="color:#888;margin-bottom:8px;">Service Details</h4>
+        <div class="detail-row">
+          <span class="detail-label">State</span>
+          <span class="detail-value">{{ service_info.get('ActiveState', '?') }} ({{ service_info.get('SubState', '?') }})</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">PID</span>
+          <span class="detail-value">{{ service_info.get('MainPID', '?') }}</span>
+        </div>
+        {% if service_info.get('MemoryCurrent') and service_info.get('MemoryCurrent') != '[not set]' %}
+        <div class="detail-row">
+          <span class="detail-label">Memory</span>
+          <span class="detail-value">{{ (service_info.get('MemoryCurrent', '0') | int) | format_bytes }}</span>
+        </div>
+        {% endif %}
+        {% if service_info.get('ActiveEnterTimestamp') %}
+        <div class="detail-row">
+          <span class="detail-label">Started</span>
+          <span class="detail-value">{{ service_info.get('ActiveEnterTimestamp', '') }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="card mt-24">
+    <h3 class="card-title">Actions</h3>
+    <div class="flex gap-8" style="flex-wrap:wrap;">
+      {% if app.server_path %}
+      <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/terminal" class="btn btn-primary">Open Claude Code</a>
+      {% endif %}
+      <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/logs" class="btn btn-secondary">View Full Logs</a>
+      {% if app.service_name %}
+      <form method="POST" action="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/restart" style="display:inline;" onsubmit="return confirm('Restart {{ app.name }}?');">
+        <button class="btn btn-warn">Restart Service</button>
+      </form>
+      {% endif %}
+      <form method="POST" action="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/delete" style="display:inline;margin-left:auto;" onsubmit="return confirm('Remove {{ app.name }} from the dashboard? This does NOT delete the actual app.');">
+        <button class="btn btn-danger">Remove from Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Recent Logs Preview -->
+  {% if recent_logs %}
+  <div class="card mt-24">
+    <div class="flex-between mb-12">
+      <h3 class="card-title" style="margin:0;">Recent Logs</h3>
+      <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}/logs" class="btn btn-sm btn-secondary">View All</a>
+    </div>
+    <div class="log-viewer">
+      {% for line in recent_logs[-20:] %}
+      <div class="log-line {% if ' 5' in line %}log-error{% elif ' 4' in line %}log-warn{% endif %}">{{ line }}</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

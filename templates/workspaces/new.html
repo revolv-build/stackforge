@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}New Workspace - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:640px;">
+  <h1>Create Workspace</h1>
+  <div class="card">
+    <form method="POST">
+      <div class="field">
+        <div class="label">Workspace Name *</div>
+        <input name="name" required autofocus placeholder="e.g. My Project" />
+        <div class="hint">A URL-friendly slug will be generated automatically.</div>
+      </div>
+      <div class="flex gap-8">
+        <button type="submit" class="btn btn-primary">Create Workspace</button>
+        <a href="/workspaces" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

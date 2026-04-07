@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Terminal - {{ app.name }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:1200px;">
+  <div class="hub-header">
+    <div>
+      <h1 style="margin:0;">Claude Code: {{ app.name }}</h1>
+      <div class="sub">{{ app.server_path }}</div>
+    </div>
+    <div class="flex gap-8" style="align-items:center;">
+      <a href="/terminal/{{ token }}/" target="_blank" class="btn btn-mobile-terminal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97757" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Mobile
+      </a>
+      <button class="btn btn-force-reload" id="forceReload">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97757" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Force Reload
+      </button>
+      <a href="/workspaces/{{ workspace.slug }}/apps/{{ app.slug }}" class="btn btn-secondary">Back to App</a>
+    </div>
+  </div>
+
+  <div class="terminal-window mt-16">
+    <div class="terminal-titlebar">
+      <div class="terminal-dots">
+        <span class="terminal-dot dot-red"></span>
+        <span class="terminal-dot dot-yellow"></span>
+        <span class="terminal-dot dot-green"></span>
+      </div>
+      <div class="terminal-title">{{ app.name }} — claude</div>
+      <div class="terminal-toggle-wrap">
+        <label class="terminal-toggle" id="toggleLabel">
+          <input type="checkbox" id="terminalToggle" checked>
+          <span class="terminal-toggle-slider"><img class="toggle-icon" src="{{ url_for('static', filename='claudecode-color.svg') }}" alt="" style="filter:brightness(0);"></span>
+        </label>
+      </div>
+    </div>
+    <div id="terminalLoading" style="height:70vh;background:#000;display:flex;align-items:center;justify-content:center;">
+      <div style="text-align:center;color:#555;">
+        <img src="{{ url_for('static', filename='claudecode-color.svg') }}" width="28" height="28" alt="" style="opacity:0.4;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;">
+        <div style="font-size:13px;">Connecting...</div>
+      </div>
+    </div>
+    <div id="terminalFrame" style="display:none;">
+      <iframe id="terminalIframe"
+              style="width:100%;height:70vh;border:none;background:#000;display:block;">
+      </iframe>
+    </div>
+    <div id="terminalOff" style="display:none;height:70vh;background:#000;align-items:center;justify-content:center;">
+      <div style="text-align:center;color:#555;">
+        <img src="{{ url_for('static', filename='claudecode-color.svg') }}" width="32" height="32" alt="" style="filter:brightness(0.3);margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;">
+        <div style="font-size:14px;">Claude Code session ended</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference Uploads -->
+  <div class="upload-panel mt-16">
+    <div class="upload-header">
+      <h3 style="margin:0;font-size:14px;color:#aaa;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97757" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Reference Images
+      </h3>
+      <label class="btn btn-force-reload btn-sm" style="cursor:pointer;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97757" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      </label>
+    </div>
+    <div class="upload-drop" id="dropZone">
+      <div class="upload-drop-text">Drop images here or click Upload</div>
+    </div>
+    <div class="upload-list" id="uploadList"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var toggle = document.getElementById('terminalToggle');
+  var frameWrap = document.getElementById('terminalFrame');
+  var loading = document.getElementById('terminalLoading');
+  var offScreen = document.getElementById('terminalOff');
+  var iframe = document.getElementById('terminalIframe');
+  var slug = '{{ app.slug }}';
+  var wsSlug = '{{ workspace.slug }}';
+  var terminalUrl = '/terminal/{{ token }}/';
+  var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var wsBase = '/workspaces/' + wsSlug + '/apps/' + slug;
+
+  function waitForTerminal(attempts) {
+    if (attempts <= 0) {
+      loading.querySelector('div > div').textContent = 'Failed to connect';
+      return;
+    }
+    fetch(terminalUrl, {method: 'HEAD'}).then(function(r) {
+      if (r.ok) {
+        iframe.src = terminalUrl;
+        loading.style.display = 'none';
+        frameWrap.style.display = 'block';
+      } else {
+        setTimeout(function() { waitForTerminal(attempts - 1); }, 500);
+      }
+    }).catch(function() {
+      setTimeout(function() { waitForTerminal(attempts - 1); }, 500);
+    });
+  }
+  waitForTerminal(20);
+
+  document.getElementById('forceReload').addEventListener('click', function() {
+    frameWrap.style.display = 'none';
+    loading.style.display = 'flex';
+    loading.querySelector('div > div').textContent = 'Reconnecting...';
+    fetch(wsBase + '/terminal/stop', {
+      method: 'POST', redirect: 'manual',
+      headers: {'X-CSRFToken': csrf, 'X-Requested-With': 'fetch'}
+    }).then(function() {
+      setTimeout(function() { window.location.href = wsBase + '/terminal'; }, 1500);
+    });
+  });
+
+  toggle.addEventListener('change', function() {
+    if (!toggle.checked) {
+      if (!confirm('Stop this Claude Code session?')) { toggle.checked = true; return; }
+      fetch(wsBase + '/terminal/stop', {
+        method: 'POST', redirect: 'manual',
+        headers: {'X-CSRFToken': csrf, 'X-Requested-With': 'fetch'}
+      }).then(function() {
+        frameWrap.style.display = 'none';
+        loading.style.display = 'none';
+        offScreen.style.display = 'flex';
+      });
+    } else {
+      setTimeout(function() { window.location.href = wsBase + '/terminal'; }, 1000);
+    }
+  });
+
+  // ── Upload Logic ──────────────────────────────────────────────
+  var fileInput = document.getElementById('fileInput');
+  var dropZone = document.getElementById('dropZone');
+  var uploadList = document.getElementById('uploadList');
+
+  function uploadFile(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    return fetch(wsBase + '/upload', {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf},
+      body: fd
+    }).then(function(r) { return r.json(); });
+  }
+
+  function copyPath(path) {
+    navigator.clipboard.writeText(path).then(function() {
+      var el = document.querySelector('[data-path="' + path + '"] .upload-copied');
+      if (el) { el.style.opacity = '1'; setTimeout(function() { el.style.opacity = '0'; }, 1200); }
+    });
+  }
+
+  function deleteFile(filename) {
+    fetch(wsBase + '/upload/' + encodeURIComponent(filename), {
+      method: 'DELETE',
+      headers: {'X-CSRFToken': csrf, 'X-Requested-With': 'fetch'}
+    }).then(function() { loadFiles(); });
+  }
+
+  function renderFiles(files) {
+    if (!files.length) {
+      dropZone.style.display = 'flex';
+      uploadList.innerHTML = '';
+      return;
+    }
+    dropZone.style.display = 'none';
+    uploadList.innerHTML = files.map(function(f) {
+      var sizeKB = Math.round(f.size / 1024);
+      return '<div class="upload-item" data-path="' + f.path + '">' +
+        '<div class="upload-item-info">' +
+          '<span class="upload-item-name">' + f.name + '</span>' +
+          '<span class="upload-item-size">' + sizeKB + 'KB</span>' +
+        '</div>' +
+        '<div class="upload-item-path">' + f.path + '</div>' +
+        '<div class="upload-item-actions">' +
+          '<button class="upload-copy-btn" onclick="event.stopPropagation();" data-copy="' + f.path + '">Copy Path</button>' +
+          '<span class="upload-copied">Copied!</span>' +
+          '<button class="upload-delete-btn" data-del="' + f.name + '">&#10005;</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    uploadList.querySelectorAll('.upload-copy-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { copyPath(btn.dataset.copy); });
+    });
+    uploadList.querySelectorAll('.upload-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { deleteFile(btn.dataset.del); });
+    });
+  }
+
+  function loadFiles() {
+    fetch(wsBase + '/uploads').then(function(r) { return r.json(); }).then(function(data) {
+      renderFiles(data.files || []);
+    });
+  }
+
+  function handleFiles(files) {
+    var promises = [];
+    for (var i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith('image/')) promises.push(uploadFile(files[i]));
+    }
+    Promise.all(promises).then(function() { loadFiles(); });
+  }
+
+  fileInput.addEventListener('change', function() { handleFiles(fileInput.files); fileInput.value = ''; });
+
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('drag-over'); });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+  dropZone.addEventListener('click', function() { fileInput.click(); });
+
+  loadFiles();
+})();
+</script>
+{% endblock %}

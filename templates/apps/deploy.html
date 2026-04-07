@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Deploying {{ deploy.name }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:640px;">
+  <h1>Deploying {{ deploy.name }}</h1>
+  <div class="sub">{{ deploy.domain }} &middot; port {{ deploy.port }}</div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="deploy-steps" id="steps">
+      <div class="deploy-step" data-step="clone">
+        <span class="deploy-icon" id="icon-clone">&#9711;</span>
+        <span>Clone baseline template</span>
+      </div>
+      <div class="deploy-step" data-step="git">
+        <span class="deploy-icon" id="icon-git">&#9711;</span>
+        <span>Initialize git repository</span>
+      </div>
+      <div class="deploy-step" data-step="venv">
+        <span class="deploy-icon" id="icon-venv">&#9711;</span>
+        <span>Create Python environment &amp; install dependencies</span>
+      </div>
+      <div class="deploy-step" data-step="env">
+        <span class="deploy-icon" id="icon-env">&#9711;</span>
+        <span>Generate .env configuration</span>
+      </div>
+      <div class="deploy-step" data-step="systemd">
+        <span class="deploy-icon" id="icon-systemd">&#9711;</span>
+        <span>Create &amp; start systemd service</span>
+      </div>
+      <div class="deploy-step" data-step="nginx">
+        <span class="deploy-icon" id="icon-nginx">&#9711;</span>
+        <span>Configure nginx &amp; reload</span>
+      </div>
+      {% if deploy.ssl %}
+      <div class="deploy-step" data-step="ssl">
+        <span class="deploy-icon" id="icon-ssl">&#9711;</span>
+        <span>Provision SSL certificate</span>
+      </div>
+      {% endif %}
+      {% if deploy.github_repo %}
+      <div class="deploy-step" data-step="github">
+        <span class="deploy-icon" id="icon-github">&#9711;</span>
+        <span>Create GitHub repository</span>
+      </div>
+      {% endif %}
+      <div class="deploy-step" data-step="register">
+        <span class="deploy-icon" id="icon-register">&#9711;</span>
+        <span>Register in dashboard</span>
+      </div>
+    </div>
+
+    <div id="deploy-error" class="msg msg-err" style="display:none;margin-top:16px;"></div>
+    <div id="deploy-warning" class="msg msg-err" style="display:none;margin-top:16px;background:#2a2000;border-color:#5a4a00;color:#e6a700;"></div>
+    <div id="deploy-success" class="msg msg-ok" style="display:none;margin-top:16px;">
+      App deployed successfully! Redirecting...
+    </div>
+  </div>
+</div>
+
+<script>
+var icons = {pending:'\u25CB', running:'\u25D4', done:'\u2714', failed:'\u2718', warning:'\u26A0'};
+var colors = {pending:'#555', running:'#e6a700', done:'#5adb8a', failed:'#e05050', warning:'#e6a700'};
+
+var source = new EventSource('/workspaces/{{ deploy.ws_slug }}/apps/deploy/{{ deploy.slug }}/stream');
+source.onmessage = function(event) {
+  var data = JSON.parse(event.data);
+  var icon = document.getElementById('icon-' + data.step);
+  if (icon) {
+    icon.textContent = icons[data.status] || icons.pending;
+    icon.style.color = colors[data.status] || colors.pending;
+  }
+  if (data.status === 'failed') {
+    source.close();
+    var err = document.getElementById('deploy-error');
+    err.style.display = '';
+    err.textContent = 'Failed at "' + data.step + '": ' + (data.message || 'Unknown error');
+  }
+  if (data.status === 'warning') {
+    var warn = document.getElementById('deploy-warning');
+    warn.style.display = '';
+    warn.textContent = (warn.textContent ? warn.textContent + ' | ' : '') + data.step + ': ' + data.message;
+  }
+  if (data.step === 'complete' && data.status === 'done') {
+    source.close();
+    document.getElementById('deploy-success').style.display = '';
+    try {
+      var info = JSON.parse(data.message);
+      setTimeout(function() { window.location.href = '/workspaces/' + info.ws_slug + '/apps/' + info.slug; }, 1500);
+    } catch(e) {
+      setTimeout(function() { window.location.href = '/workspaces'; }, 1500);
+    }
+  }
+};
+source.onerror = function() {
+  source.close();
+  var err = document.getElementById('deploy-error');
+  if (err.style.display === 'none') {
+    err.style.display = '';
+    err.textContent = 'Connection lost. Check server logs.';
+  }
+};
+</script>
+{% endblock %}
